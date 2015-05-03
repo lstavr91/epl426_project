@@ -1,0 +1,1408 @@
+<html>
+
+<head>
+<title>Exercise 3 - CARS</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+<script type="text/javascript" src="webgl-utils.js"></script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+
+    varying vec2 vTextureCoord;
+	 
+	uniform sampler2D uSampler;
+
+    void main(void) {
+        gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+		
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec2 aTextureCoord;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+	
+    varying vec2 vTextureCoord;
+
+    void main(void) {
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        vTextureCoord = aTextureCoord;
+    }
+</script>
+
+
+<script type="text/javascript">
+
+    var gl;
+	
+    function initGL(canvas) {
+        try {
+            gl = canvas.getContext("experimental-webgl");
+            gl.viewportWidth =  canvas.width;
+            gl.viewportHeight = canvas.height;
+        } catch (e) {
+        }
+        if (!gl) {
+            alert("Could not initialise WebGL, sorry :-(");
+        }
+    }
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+    var shaderProgram;
+
+    function initShaders() {
+        var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+
+        gl.useProgram(shaderProgram);
+
+        shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+        shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+        gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+
+        shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+        shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+		shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+    }
+
+    function handleLoadedTexture(textures) {
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+        gl.bindTexture(gl.TEXTURE_2D, textures[0]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[0].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+/*
+        gl.bindTexture(gl.TEXTURE_2D, textures[1]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[1].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+        gl.bindTexture(gl.TEXTURE_2D, textures[2]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[2].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+        gl.generateMipmap(gl.TEXTURE_2D);
+*/
+		gl.bindTexture(gl.TEXTURE_2D, textures[1]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[1].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+		gl.bindTexture(gl.TEXTURE_2D, textures[2]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[2].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		
+		gl.bindTexture(gl.TEXTURE_2D, textures[3]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[3].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		
+		gl.bindTexture(gl.TEXTURE_2D, textures[4]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[4].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+			
+		gl.bindTexture(gl.TEXTURE_2D, textures[5]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[5].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		
+		gl.bindTexture(gl.TEXTURE_2D, textures[6]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[6].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+	
+	var car1Textures = Array();
+
+    function initTexture() {
+        var crateImage = new Image();
+		var floorImage = new Image();
+		var blueImage = new Image();
+		var reddishImage = new Image();
+		var waterImage = new Image();
+		var tireImage = new Image();
+		var roadImage = new Image();
+		
+        for (var i=0; i < 7; i++) {
+			//0
+            var texture = gl.createTexture();
+            texture.image = crateImage;
+            car1Textures.push(texture);
+			//1
+			var texture = gl.createTexture();
+            texture.image = floorImage;
+            car1Textures.push(texture);
+			//2
+			var texture = gl.createTexture();
+            texture.image = blueImage;
+            car1Textures.push(texture);
+			//3
+			var texture = gl.createTexture();
+            texture.image = reddishImage;
+            car1Textures.push(texture);
+			//4
+			var texture = gl.createTexture();
+            texture.image = waterImage;
+            car1Textures.push(texture);
+			//5
+			var texture = gl.createTexture();
+            texture.image = tireImage;
+            car1Textures.push(texture);
+			//6
+			var texture = gl.createTexture();
+            texture.image = roadImage;
+            car1Textures.push(texture);
+		}
+		
+        crateImage.onload = function () {
+            handleLoadedTexture(car1Textures)
+        }
+		
+        crateImage.src = "crate.gif";
+		floorImage.src="Floor.gif";
+		blueImage.src = "blue.gif";
+		reddishImage.src="reddish.gif";
+		waterImage.src = "water.gif";
+		tireImage.src = "tire.gif"
+		roadImage.src = "road.gif"
+		
+    }
+
+    var mvMatrix = mat4.create();
+	var mvMatrixStack = [];
+    var pMatrix = mat4.create();
+
+	function mvPushMatrix() {
+        var copy = mat4.create();
+        mat4.set(mvMatrix, copy);
+        mvMatrixStack.push(copy);
+    }
+
+    function mvPopMatrix() {
+        if (mvMatrixStack.length == 0) {
+            throw "Invalid popMatrix!";
+        }
+        mvMatrix = mvMatrixStack.pop();
+    }
+	
+    function setMatrixUniforms() {
+        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+    }
+	
+	function degToRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+	
+	var left_right=0;
+	var up_down=0;
+	var tire_spin=10000^100;
+	var car_angle=0;
+	var car_acc=0.0;
+	
+	var left_right2=0;
+	var up_down2=0;
+	var tire_spin2=10000^100;
+	var car_angle2=0;
+	var car_acc2=0.0;
+/*
+	var xRot = 0;
+    var xSpeed = 0;
+
+    var yRot = 0;
+    var ySpeed = 0;
+*/
+    var z = -30.0;
+   
+    var filter = 0;
+	var filter2 = 0;
+    var currentlyPressedKeys = {};
+
+    function handleKeyDown(event) {
+        currentlyPressedKeys[event.keyCode] = true;
+
+        if (String.fromCharCode(event.keyCode) == "J") {
+            filter += 1;
+            if (filter == 5) {
+                filter = 0;
+            }
+        }
+		if (String.fromCharCode(event.keyCode) == "K") {
+            filter2 += 1;
+            if (filter2 == 5) {
+                filter2 = 0;
+            }
+        }
+		
+    }
+	
+	function handleKeyUp(event) {
+        currentlyPressedKeys[event.keyCode] = false;
+    }
+
+	function handleKeys() {
+        if (currentlyPressedKeys[33]) {
+            // Page Up
+            z -= 0.05;
+        }
+        if (currentlyPressedKeys[34]) {
+            // Page Down
+            z += 0.05;
+        }
+		
+		
+		if (currentlyPressedKeys[37] || currentlyPressedKeys[38] || currentlyPressedKeys[39] || currentlyPressedKeys[40]) {
+				if(car_acc < 0.10)
+					car_acc +=0.00125;
+				else if (car_acc<0.20)
+					car_acc +=0.005;
+		}
+		else {
+			car_acc=0;
+		}
+			
+		if (currentlyPressedKeys[65] || currentlyPressedKeys[68] || currentlyPressedKeys[83] || currentlyPressedKeys[87]) {
+				if(car_acc2 < 0.10)
+					car_acc2 +=0.00125;
+				else if (car_acc2<0.20)
+					car_acc2 +=0.005;
+		}
+		else {
+			car_acc2=0;
+			}	
+	
+        if (currentlyPressedKeys[37] && currentlyPressedKeys[38]) {
+			// left + up
+			left_right -= 0.075+car_acc;
+			up_down += 0.075+car_acc;
+			rtire += tire_spin;
+			car_angle =225;
+		}
+		else if (currentlyPressedKeys[37] && currentlyPressedKeys[40]) {
+			//left + down
+			left_right -= 0.075+car_acc;
+			up_down -= 0.075+car_acc;
+			rtire -= tire_spin;
+			car_angle =315;
+		}
+		else if (currentlyPressedKeys[39] && currentlyPressedKeys[38]) {
+			//right + up
+			left_right += 0.075+car_acc;
+			up_down += 0.075+car_acc;
+			rtire += tire_spin;
+			car_angle =135;
+		}
+		else if (currentlyPressedKeys[39] && currentlyPressedKeys[40]) {
+			// right +down
+			left_right += 0.075+car_acc;
+			up_down -= 0.075+car_acc;
+			rtire -= tire_spin;
+			car_angle =45;
+		}
+		else if (currentlyPressedKeys[37]) {
+            left_right -= 0.1+car_acc;
+			rtire += tire_spin;
+			car_angle =270;
+        }
+		else if (currentlyPressedKeys[39]) {
+			
+            // Right cursor key
+            left_right += 0.1+car_acc;
+			rtire += tire_spin;
+			car_angle =90;
+			
+        }
+		else if (currentlyPressedKeys[38]) {
+            // Up cursor key
+            up_down += 0.1+car_acc;
+			rtire += tire_spin;
+			car_angle =180;
+        }
+		else if (currentlyPressedKeys[40]) {
+            // Down cursor key
+            up_down -= 0.1+car_acc;
+			rtire -= tire_spin;
+			car_angle =0;
+        }
+		
+		
+        if (currentlyPressedKeys[65] && currentlyPressedKeys[87]) {
+		    // left + up
+			left_right2 -= 0.075+car_acc2;
+			up_down2 += 0.075+car_acc2;
+			rtire2 += tire_spin2;
+			car_angle2 =225;
+		}
+		else if (currentlyPressedKeys[65] && currentlyPressedKeys[83]) {
+			//left + down
+			left_right2 -= 0.075+car_acc2;
+			up_down2 -= 0.075+car_acc2;
+			rtire2 -= tire_spin2;
+			car_angle2 =315;
+		}
+		else if (currentlyPressedKeys[68] && currentlyPressedKeys[87]) {
+			//right + up
+			left_right2 += 0.075+car_acc2;
+			up_down2 += 0.075+car_acc2;
+			rtire2 += tire_spin2;
+			car_angle2 =135;
+		}
+		else if (currentlyPressedKeys[68] && currentlyPressedKeys[83]) {
+			// right +down
+			left_right2 += 0.075+car_acc2;
+			up_down2 -= 0.075+car_acc2;
+			rtire2 -= tire_spin2;
+			car_angle2 =45;
+		}
+		else if (currentlyPressedKeys[65]) {
+			// Left cursor key
+            left_right2 -= 0.1+car_acc2;
+			rtire2 += tire_spin2;
+			car_angle2 =270;
+        }
+		else if (currentlyPressedKeys[68]) {
+			
+            // Right cursor key
+            left_right2 += 0.1+car_acc2;
+			rtire2 += tire_spin2;
+			car_angle2 =90;
+			
+        }
+		else if (currentlyPressedKeys[87]) {
+            // Up cursor key
+            up_down2 += 0.1+car_acc2;
+			rtire2 += tire_spin2;
+			car_angle2 =180;
+        }
+		else if (currentlyPressedKeys[83]) {
+            // Down cursor key
+            up_down2 -= 0.1+car_acc2;
+			rtire2 -= tire_spin2;
+			car_angle2 =0;
+        }
+	
+    }
+
+	var cubeVertexPositionBuffer;
+    var cubeVertexTextureCoordBuffer;
+    var cubeVertexIndexBuffer;
+	var tireVertexPositionBuffer;
+    var tireVertexTextureCoordBuffer;
+    var tireVertexIndexBuffer;
+	var road_topVertexTextureCoordBufferr;
+    var road_topVertexPositionBuffer;
+	var road_topVertexIndexBuffer;
+	var road_sideVertexTextureCoordBuffer;
+	var road_sideVertexPositionBuffer;
+	var road_sideVertexIndexBuffer;
+
+    function initBuffers() {
+        cubeVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+        vertices = [
+            // Front face
+             1.0,  0.25,  0.5,
+             1.0,  0.25,  -0.5,
+             1.0, -0.25,  -0.5,
+			 1.0, -0.25,  0.5,
+
+            // Back face
+             -1.0,  0.25,  0.5,
+             -1.0,  0.25,  -0.5,             
+             -1.0, -0.25,  -0.5,
+			 -1.0, -0.25,  0.5,
+
+            // Top face
+             1.0,  0.25,  0.5,
+             -1.0,  0.25,  0.5,
+			 -1.0,  0.25,  -0.5,
+             1.0,  0.25,  -0.5,
+             
+
+            // Bottom face
+             1.0, -0.25,  0.5,
+             -1.0, -0.25,  0.5,
+			 -1.0, -0.25,  -0.5,
+             1.0, -0.25,  -0.5,
+             
+
+            // Right face
+             1.0,  0.25,  -0.5,
+             -1.0,  0.25,  -0.5,
+			 -1.0, -0.25,  -0.5,
+             1.0, -0.25,  -0.5,
+             
+
+            // Left face
+             1.0,  0.25,  0.5,
+             -1.0,  0.25,  0.5,
+			 -1.0, -0.25,  0.5,
+             1.0, -0.25,  0.5
+            
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        cubeVertexPositionBuffer.itemSize = 3;
+        cubeVertexPositionBuffer.numItems = 24;
+
+        cubeVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+        var textureCoords = [
+            // Front face
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+
+            // Back face
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+
+            // Top face
+            0.0, 1.0,
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+
+            // Bottom face
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+            1.0, 0.0,
+
+            // Right face
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+
+            // Left face
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+        cubeVertexTextureCoordBuffer.itemSize = 2;
+        cubeVertexTextureCoordBuffer.numItems = 24;
+
+        cubeVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+        var cubeVertexIndices = [
+            0, 1, 2,      0, 2, 3,    // Front face
+            4, 5, 6,      4, 6, 7,    // Back face
+            8, 9, 10,     8, 10, 11,  // Top face
+            12, 13, 14,   12, 14, 15, // Bottom face
+            16, 17, 18,   16, 18, 19, // Right face
+            20, 21, 22,   20, 22, 23  // Left face
+        ];
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
+        cubeVertexIndexBuffer.itemSize = 1;
+        cubeVertexIndexBuffer.numItems = 36;
+    
+		//tire
+		
+		tireVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexPositionBuffer);
+        vertices = [
+            // Front face
+            -1.0, -1.0,  0.5,
+             1.0, -1.0,  0.5,
+             1.0,  1.0,  0.5,
+            -1.0,  1.0,  0.5,
+
+            // Back face
+            -1.0, -1.0, -0.5,
+            -1.0,  1.0, -0.5,
+             1.0,  1.0, -0.5,
+             1.0, -1.0, -0.5,
+
+            // Top face
+            -1.0,  1.0, -0.5,
+            -1.0,  1.0,  0.5,
+             1.0,  1.0,  0.5,
+             1.0,  1.0, -0.5,
+
+            // Bottom face
+            -1.0, -1.0, -0.5,
+             1.0, -1.0, -0.5,
+             1.0, -1.0,  0.5,
+            -1.0, -1.0,  0.5,
+
+            // Right face
+             1.0, -1.0, -0.5,
+             1.0,  1.0, -0.5,
+             1.0,  1.0,  0.5,
+             1.0, -1.0,  0.5,
+
+            // Left face
+            -1.0, -1.0, -0.5,
+            -1.0, -1.0,  0.5,
+            -1.0,  1.0,  0.5,
+            -1.0,  1.0, -0.5
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        tireVertexPositionBuffer.itemSize = 3;
+        tireVertexPositionBuffer.numItems = 24;
+
+        tireVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexTextureCoordBuffer);
+		var textureCoords = [
+			// Front face
+			0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+
+            // Back face
+			1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+
+            // Top face
+			0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+
+            // Bottom face
+			0.0, 1.0,
+            0.0, 0.0,
+			1.0, 0.0,
+            1.0, 1.0,
+            
+           // Right face
+		    0.0, 1.0,
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+           
+            // Left face
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+			
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+        tireVertexTextureCoordBuffer.itemSize = 2;
+        tireVertexTextureCoordBuffer.numItems = 24;
+
+        tireVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tireVertexIndexBuffer);
+        var tireVertexIndices = [
+            0, 1, 2,      0, 2, 3,    // Front face
+            4, 5, 6,      4, 6, 7,    // Back face
+            8, 9, 10,     8, 10, 11,  // Top face
+            12, 13, 14,   12, 14, 15, // Bottom face
+            16, 17, 18,   16, 18, 19, // Right face
+            20, 21, 22,   20, 22, 23  // Left face
+        ];
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(tireVertexIndices), gl.STATIC_DRAW);
+        tireVertexIndexBuffer.itemSize = 1;
+        tireVertexIndexBuffer.numItems = 36;
+		
+		
+		//Road
+		//top-bottom
+		road_topVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_topVertexPositionBuffer);
+        vertices = [
+            
+            // Front face
+             26.0, 2.5 ,-0.05,
+			 26.0, 2.5 , 0.05,
+			 26.0, -2.5, 0.05, 
+			 26.0, -2.5,-0.05,
+			// Back face
+             -26.0, 2.5 , 0.05,
+			 -26.0, 2.5 ,-0.05,
+			 -26.0, -2.5,-0.05, 
+			 -26.0, -2.5, 0.05,
+           
+            // Top face
+             -26.0,  2.5,  0.05,
+              26.0,  2.5,  0.05,
+              26.0,  2.5, -0.05,
+             -26.0,  2.5, -0.05,
+        
+            // Bottom face
+              26.0, -2.5, -0.05,
+              -26.0, -2.5, -0.05,
+              -26.0, -2.5, 0.05,
+              26.0, -2.5, 0.05,
+             
+            // Right face
+             -26.0,  2.5,  -0.05,
+              26.0,  2.5,  -0.05,
+			  26.0, -2.5,  -0.05,
+             -26.0, -2.5,  -0.05,
+             
+            // Left face
+              26.0,  2.5, 0.05,
+             -26.0,  2.5, 0.05,
+			 -26.0, -2.5, 0.05,
+              26.0, -2.5,  0.05,
+            
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        road_topVertexPositionBuffer.itemSize = 3;
+        road_topVertexPositionBuffer.numItems = 24;
+
+
+        road_topVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER,  road_topVertexTextureCoordBuffer);
+        var textureCoords = [
+            // Front face
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+
+            // Back face
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+
+            // Top face
+            0.0, 1.0,
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+
+            // Bottom face
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+            1.0, 0.0,
+
+            // Right face
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+
+            // Left face
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+        road_topVertexTextureCoordBuffer.itemSize = 2;
+        road_topVertexTextureCoordBuffer.numItems = 24;
+
+        road_topVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, road_topVertexIndexBuffer);
+        var road_topVertexIndices = [
+            0, 1, 2,      0, 2, 3,    // Front face
+            4, 5, 6,      4, 6, 7,    // Back face
+            8, 9, 10,     8, 10, 11,  // Top face
+            12, 13, 14,   12, 14, 15, // Bottom face
+            16, 17, 18,   16, 18, 19, // Right face
+            20, 21, 22,   20, 22, 23  // Left face
+        ];
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(road_topVertexIndices), gl.STATIC_DRAW);
+        road_topVertexIndexBuffer.itemSize = 1;
+        road_topVertexIndexBuffer.numItems = 36;
+		//side
+		road_sideVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexPositionBuffer);
+        vertices = [
+            
+            // Front face
+             7.5, 2.5 ,-0.05,
+			 7.5, 2.5 , 0.05,
+			 7.5, -2.5, 0.05, 
+			 7.5, -2.5,-0.05,
+			// Back face
+             -7.5, 2.5 , 0.05,
+			 -7.5, 2.5 ,-0.05,
+			 -7.5, -2.5,-0.05, 
+			 -7.5, -2.5, 0.05,
+           
+            // Top face
+             -7.5,  2.5,  0.05,
+              7.5,  2.5,  0.05,
+              7.5,  2.5, -0.05,
+             -7.5,  2.5, -0.05,
+        
+            // Bottom face
+              7.5, -2.5, -0.05,
+              -7.5, -2.5, -0.05,
+              -7.5, -2.5, 0.05,
+              7.5, -2.5, 0.05,
+             
+            // Right face
+             -7.5,  2.5,  -0.05,
+              7.5,  2.5,  -0.05,
+			  7.5, -2.5,  -0.05,
+             -7.5, -2.5,  -0.05,
+             
+            // Left face
+              7.5,  2.5, 0.05,
+             -7.5,  2.5, 0.05,
+			 -7.5, -2.5, 0.05,
+              7.5, -2.5,  0.05,
+            
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        road_sideVertexPositionBuffer.itemSize = 3;
+        road_sideVertexPositionBuffer.numItems = 24;
+
+
+        road_sideVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER,  road_sideVertexTextureCoordBuffer);
+        var textureCoords = [
+            // Front face
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+
+            // Back face
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+
+            // Top face
+            0.0, 1.0,
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+
+            // Bottom face
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+            1.0, 0.0,
+
+            // Right face
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+            0.0, 0.0,
+
+            // Left face
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+        road_sideVertexTextureCoordBuffer.itemSize = 2;
+        road_sideVertexTextureCoordBuffer.numItems = 24;
+
+        road_sideVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, road_sideVertexIndexBuffer);
+        var road_sideVertexIndices = [
+            0, 1, 2,      0, 2, 3,    // Front face
+            4, 5, 6,      4, 6, 7,    // Back face
+            8, 9, 10,     8, 10, 11,  // Top face
+            12, 13, 14,   12, 14, 15, // Bottom face
+            16, 17, 18,   16, 18, 19, // Right face
+            20, 21, 22,   20, 22, 23  // Left face
+        ];
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(road_sideVertexIndices), gl.STATIC_DRAW);
+        road_sideVertexIndexBuffer.itemSize = 1;
+        road_sideVertexIndexBuffer.numItems = 36;
+
+		
+		/*
+		
+		//side
+		
+		
+		
+		road_sideVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexPositionBuffer);
+        vertices = [
+             7.5,  15.0,  0.0,
+            -7.5,  15.0,  0.0,
+             7.5, -15.0,  0.0,
+            -7.5, -15.0,  0.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        road_sideVertexPositionBuffer.itemSize = 3;
+        road_sideVertexPositionBuffer.numItems = 4;
+
+        road_sideVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER,  road_sideVertexTextureCoordBuffer);
+        var textureCoords = [
+			// Front face
+				0.0, 0.0,
+				1.0, 0.0,
+				1.0, 1.0,
+				0.0, 1.0,
+
+        ]
+		
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+        road_sideVertexTextureCoordBuffer.itemSize = 2; //2
+        road_sideVertexTextureCoordBuffer.numItems = 4; //24
+		*/	
+	}
+	
+	function road(){
+		//Create Road
+		//mat4.translate(mvMatrix, [0.0, 0.0, -75.0]);
+		
+		
+		//top & bottom road
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [-5, 0.0, 0.0]);
+		//mat4.scale(mvMatrix, [25.0, 1.0, 1.0]);
+		
+		//top road
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [0.0, 10, -2.5]);
+		//mat4.scale(mvMatrix, [1.0, 5.0, 1.0]);
+		//mat4.rotate(mvMatrix, degToRad(90), [1, 0, 0]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_topVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, road_topVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_topVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, road_topVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[6]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, road_topVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, road_topVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		
+		mvPopMatrix();
+		
+		
+		//bottom road
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [0.0, -10, -2.5]);
+		//mat4.scale(mvMatrix, [1.0, 5.0, 1.0]);
+		//mat4.rotate(mvMatrix, degToRad(90), [1, 0, 0]);
+		
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_topVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, road_topVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_topVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, road_topVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[6]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+		
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, road_topVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, road_topVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		
+		mvPopMatrix();
+		mvPopMatrix();
+		
+		//left & right road
+		mvPushMatrix();
+		
+		//mat4.scale(mvMatrix, [3.0, 15.0, 1.0]);
+		//left road
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [18.5, 0.0, -2.5]);
+		//mat4.scale(mvMatrix, [3.0, 15.0, 1.0]);
+		mat4.rotate(mvMatrix, degToRad(90), [0, 0, 1]);
+		
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, road_sideVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, road_sideVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[6]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, road_sideVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, road_sideVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		
+		//right road
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [-28.5, 0.0, -2.5]);
+		//mat4.scale(mvMatrix, [3.0, 15.0, 1.0]);
+		mat4.rotate(mvMatrix, degToRad(90), [0, 0, 1]);
+		
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, road_sideVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, road_sideVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[6]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+		
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, road_sideVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, road_sideVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		
+		mvPopMatrix();
+		
+		
+		/*
+		
+		//left side road
+		mvPushMatrix();
+		//mat4.translate(mvMatrix, [-61.5, 0.0, 0.0]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, road_sideVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, road_sideVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[filter]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, road_sideVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, road_sideVertexIndexBuffer.numItems);
+		
+		mvPopMatrix();
+		
+		
+		//right side road
+		mvPushMatrix();
+		//mat4.translate(mvMatrix, [23.5, 0.0, 0.0]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, road_sideVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, road_sideVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, road_sideVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[filter]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, road_sideVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, road_sideVertexIndexBuffer.numItems);
+		
+		mvPopMatrix();
+		*/
+		
+	
+		}
+
+	function car1(){
+		mvPushMatrix();
+        mat4.rotate(mvMatrix, degToRad(90), [0, 1, 0]);
+        mat4.rotate(mvMatrix, degToRad(90), [0, 0, 1]);
+		//mat4.translate(mvMatrix, [0.0,0.0, z]);
+		
+		//lowerbody
+		mvPushMatrix();
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, cubeVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[filter]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+		
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		//upperbody
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [0.0, 0.375, 0.0]);
+		mat4.scale(mvMatrix, [0.5,0.5,0.5]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, cubeVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[filter]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+		
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		//rightfront tire
+		mvPushMatrix();	
+		mat4.translate(mvMatrix, [0.5, -0.25, -0.5]);
+		mat4.scale(mvMatrix, [0.25,0.25,0.25]);
+		mat4.rotate(mvMatrix, degToRad(rtire), [0, 0, 1]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, tireVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, tireVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[5]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tireVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, tireVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		
+		//leftfront tire
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [0.5, -0.25, 0.5]);
+		mat4.scale(mvMatrix, [0.25,0.25,0.25]);
+		mat4.rotate(mvMatrix, degToRad(rtire), [0, 0, 1]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, tireVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, tireVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[5]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tireVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, tireVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		//rightback tire
+		
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [-0.5, -0.25, 0.5]);
+		mat4.scale(mvMatrix, [0.25,0.25,0.25]);
+		mat4.rotate(mvMatrix, degToRad(rtire), [0, 0, 1]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, tireVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, tireVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[5]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tireVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, tireVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		//leftback tire
+		
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [-0.5, -0.25, -0.5]);
+		mat4.scale(mvMatrix, [0.25,0.25,0.25]);
+		mat4.rotate(mvMatrix, degToRad(rtire), [0, 0, 1]);
+         gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, tireVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, tireVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[5]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tireVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, tireVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		mvPopMatrix();
+		}
+
+	function car2(){
+		mvPushMatrix();
+        mat4.rotate(mvMatrix, degToRad(90), [0, 1, 0]);
+        mat4.rotate(mvMatrix, degToRad(90), [0, 0, 1]);
+		//mat4.translate(mvMatrix, [0.0,0.0, z]);
+		
+		//lowerbody
+		mvPushMatrix();
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, cubeVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[filter2]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+		
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		//upperbody
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [0.0, 0.375, 0.0]);
+		mat4.scale(mvMatrix, [0.5,0.5,0.5]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, cubeVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[filter2]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+		
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		//rightfront tire
+		mvPushMatrix();	
+		mat4.translate(mvMatrix, [0.5, -0.25, -0.5]);
+		mat4.scale(mvMatrix, [0.25,0.25,0.25]);
+		mat4.rotate(mvMatrix, degToRad(rtire2), [0, 0, 1]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, tireVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, tireVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[5]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tireVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, tireVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		
+		//leftfront tire
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [0.5, -0.25, 0.5]);
+		mat4.scale(mvMatrix, [0.25,0.25,0.25]);
+		mat4.rotate(mvMatrix, degToRad(rtire2), [0, 0, 1]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, tireVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, tireVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[5]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tireVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, tireVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		//rightback tire
+		
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [-0.5, -0.25, 0.5]);
+		mat4.scale(mvMatrix, [0.25,0.25,0.25]);
+		mat4.rotate(mvMatrix, degToRad(rtire2), [0, 0, 1]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, tireVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, tireVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[5]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tireVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, tireVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		
+		//leftback tire
+		
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [-0.5, -0.25, -0.5]);
+		mat4.scale(mvMatrix, [0.25,0.25,0.25]);
+		mat4.rotate(mvMatrix, degToRad(rtire2), [0, 0, 1]);
+         gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, tireVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, tireVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, tireVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, car1Textures[5]);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tireVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, tireVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		mvPopMatrix();
+		mvPopMatrix();
+		}
+
+	
+	var rCube = 0;
+	var rCar=0;
+	var move=-35;
+	var rtire=0;
+	var rtire2=0;
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+
+        mat4.identity(mvMatrix);
+		
+		
+		mat4.translate(mvMatrix, [0.0,0.0,z]);
+		
+		
+		mvPushMatrix();
+		road();
+		mvPopMatrix();
+		
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [left_right, up_down, 0.0]);
+		mat4.rotate(mvMatrix, degToRad(car_angle), [0, 0, 1]);
+		car1();
+		mvPopMatrix();
+		
+		mvPushMatrix();
+		mat4.translate(mvMatrix, [-3, 0, 0]);
+		mat4.translate(mvMatrix, [left_right2, up_down2, 0.0]);
+		mat4.rotate(mvMatrix, degToRad(car_angle2), [0, 0, 1]);
+		car2();
+		mvPopMatrix();
+		
+    }
+
+	var lastTime = 0;
+	
+	
+    function animate() {
+        var timeNow = new Date().getTime();
+        if (lastTime != 0) {
+            var elapsed = timeNow - lastTime;
+		
+           // xRot += (xSpeed * elapsed) / 1000.0;
+            //yRot += (ySpeed * elapsed) / 1000.0;	
+				
+			//rCube-= (500 * elapsed) / 1000.0;
+            //rCar += (90 * elapsed) / 1000.0;
+            
+        }
+        lastTime = timeNow;
+		
+    }
+	
+
+    function tick() {
+		requestAnimFrame(tick);
+		handleKeys();
+		drawScene();
+		animate();
+
+    }
+
+    function webGLStart() {
+        var canvas = document.getElementById("ex3-cars");
+        initGL(canvas);
+        initShaders();
+        initBuffers();
+		initTexture();
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+	
+		document.onkeydown = handleKeyDown;
+        document.onkeyup = handleKeyUp;
+
+        tick();
+		
+		
+
+    }
+
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();">
+
+    <canvas id="ex3-cars" style="border: none;" width="1350" height="575"></canvas>
+
+</body>
+
+</html>
